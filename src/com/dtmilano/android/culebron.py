@@ -266,6 +266,8 @@ This is usually installed by python package. Check your distribution details.
         self.targets = []
         if self.device.isKeyboardShown():
             print >> sys.stderr, "#### keyboard is show but handling it is not implemented yet ####"
+            from com.dtmilano.android.controlpanel import KeyBoard
+            self.keyboard = KeyBoard(self, self.vc, self.printOperation)
             # fixme: still no windows in uiautomator
             window = -1
         else:

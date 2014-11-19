@@ -27,6 +27,11 @@ import sys
 from com.dtmilano.android.culebron import Operation, Unit, Color
 
 
+class Key:
+    COMMA = 'KEYCODE_COMMA'
+    PERIOD = 'KEYCODE_PERIOD'
+    GO = 'KEYCODE_ENTER'
+
 class ControlPanel(Tkinter.Toplevel):
 
     def __init__(self, culebron, vc, printOperation, **kwargs):
@@ -78,6 +83,40 @@ class ControlPanel(Tkinter.Toplevel):
                 self.column = 0
                 self.row += 1
 
+class KeyBoard(Tkinter.Toplevel):
+
+    def __init__(self, culebron, vc, printOperation, **kwargs):
+        self.culebron = culebron
+        self.parent = culebron.window
+        Tkinter.Toplevel.__init__(self, self.parent)
+        self.title("Android Keyboard")
+        self.resizable(0, 0)
+        self.transient(self.parent)
+        self.printOperation = printOperation
+        self.vc = vc
+        self.grid()
+        self.column = 0
+        self.row = 0
+
+        
+        buttons_list = ['KEYCODE_Q', 'KEYCODE_W', 'KEYCODE_E', 'KEYCODE_R', 'KEYCODE_T', 'KEYCODE_Y', 'KEYCODE_U', 'KEYCODE_I', 'KEYCODE_O', 'KEYCODE_P',
+                        'KEYCODE_A', 'KEYCODE_S', 'KEYCODE_D', 'KEYCODE_F', 'KEYCODE_G', 'KEYCODE_H', 'KEYCODE_J', 'KEYCODE_K', 'KEYCODE_L',
+                        'KEYCODE_Z', 'KEYCODE_X', 'KEYCODE_C', 'KEYCODE_V', 'KEYCODE_B', 'KEYCODE_N', 'KEYCODE_M', 'KEYCODE_DEL',
+                        'KEYCODE_,', 'KEYCODE_.', 'KEYCODE_GO'
+                        ]
+
+
+        for button in buttons_list:
+            self.button = ControlPanelButton(self, culebron, vc, printOperation, value=button, text=button[8:], width=1,
+                                     bg=Color.DARK_GRAY, fg=Color.LIGHT_GRAY, highlightbackground=Color.DARK_GRAY)
+                
+            self.button.configure(command=self.button.pressKeyCode)
+            self.button.grid(column=self.column, row=self.row)
+
+            self.column += 1
+            if self.column > 9:
+                self.column = 0
+                self.row += 1
 
 class ControlPanelButton(Tkinter.Button):
 
@@ -91,8 +130,18 @@ class ControlPanelButton(Tkinter.Button):
 
     def pressKeyCode(self):
         keycode = self.value
-        self.device.press(keycode)
-        self.printOperation(None, Operation.PRESS, keycode)
+        if keycode == 'KEYCODE_,':
+            self.device.press(Key.COMMA)
+            self.printOperation(None, Operation.PRESS, Key.COMMA)
+        elif keycode == 'KEYCODE_.':
+            self.device.press(Key.PERIOD)
+            self.printOperation(None, Operation.PRESS, Key.PERIOD)
+        elif keycode == 'KEYCODE_GO':
+            self.device.press(Key.GO)
+            self.printOperation(None, Operation.PRESS, Key.GO)
+        else:
+            self.device.press(keycode)
+            self.printOperation(None, Operation.PRESS, keycode)
 
     def refreshScreen(self):
         self.culebron.showVignette()
