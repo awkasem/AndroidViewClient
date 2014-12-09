@@ -23,6 +23,8 @@ __version__ = '8.18.1'
 
 import sys, os
 import Tkinter, tkFileDialog, ttk
+
+from com.dtmilano.android.viewclient import ViewClient, View
 from com.dtmilano.android.culebron import Operation, Unit, Color
 
 class Key:

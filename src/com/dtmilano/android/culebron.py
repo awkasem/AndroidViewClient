@@ -19,7 +19,7 @@ limitations under the License.
 
 '''
 
-__version__ = '8.15.3'
+__version__ = '8.18.1'
 
 import sys
 import threading
@@ -116,7 +116,7 @@ On Ubuntu install
 
 On OSX install
 
-   $ brew install pil
+   $ brew install homebrew/python/pillow
 ''')
         if not TKINTER_AVAILABLE:
             raise Exception('''Tkinter is needed for GUI mode
@@ -147,6 +147,18 @@ This is usually installed by python package. Check your distribution details.
         self.statusBar.set("Always press F1 for help")
 
     def takeScreenshotAndShowItOnWindow(self):
+        '''
+        Takes the current screenshot and shows it on the main window.
+        It also:
+         - sizes the window
+         - create the canvas
+         - set the focus
+         - enable the events
+         - create widgets
+         - finds the targets (as explained in L{findTargets})
+         - hides the vignette (that could have been showed before)
+        '''
+        
         image = self.device.takeSnapshot(reconnect=True)
         (width, height) = image.size
         if self.scale != 1:
@@ -170,7 +182,7 @@ This is usually installed by python package. Check your distribution details.
             self.canvas.pack(fill=Tkinter.BOTH)
         self.findTargets()
         self.hideVignette()
-        
+
     def createMessageArea(self, width, height):
         self.__message = Tkinter.Label(self.window, text='', background=Color.GOLD, font=('Helvetica', 16), anchor=Tkinter.W)
         self.__message.configure(width=width)
@@ -244,7 +256,7 @@ This is usually installed by python package. Check your distribution details.
             return
         if self.vignetteId:
             if DEBUG:
-                print >> sys.stderr, "    hidding vignette"
+                print >> sys.stderr, "    hiding vignette"
             self.canvas.lift(self.imageId)
             self.canvas.update_idletasks()
             self.enableEvents()
@@ -263,7 +275,18 @@ This is usually installed by python package. Check your distribution details.
         self.window.wait_window(d)
 
     def findTargets(self):
+        '''
+        Finds the target Views (i.e. for touches).
+        '''
+        
+        if DEBUG:
+            print >> sys.stderr, "findTargets()"
+        LISTVIEW_CLASS = 'android.widget.ListView'
+        ''' The ListView class name '''
         self.targets = []
+        ''' The list of target coordinates (x1, y1, x2, y2) '''
+        self.targetViews = []
+        ''' The list of target Views '''
         if self.device.isKeyboardShown():
             print >> sys.stderr, "#### keyboard is show but handling it is not implemented yet ####"
             # fixme: still no windows in uiautomator
@@ -272,14 +295,21 @@ This is usually installed by python package. Check your distribution details.
             window = -1
         self.printOperation(None, Operation.DUMP, window)
         for v in self.vc.dump(window=window):
-            if self.isClickableCheckableOrFocusable(v):
+            if DEBUG:
+                print >> sys.stderr, "    findTargets: analyzing", v.getClass()
+            if v.getClass() == LISTVIEW_CLASS:
+                # We may want to touch ListView elements, not just the ListView
+                continue
+            parent = v.getParent()
+            if (parent and parent.getClass() == LISTVIEW_CLASS and self.isClickableCheckableOrFocusable(parent)) \
+                    or self.isClickableCheckableOrFocusable(v):
+                # If this is a touchable ListView, let's add its children instead
+                # or add it if it's touchable, focusable, whatever
                 ((x1, y1), (x2, y2)) = v.getCoords()
-                # workaround to avoid whole phone screen
-                #if (x1, y1, x2, y2) == (0, 108, , 1216):
-                #    continue
                 if DEBUG:
                     print >> sys.stderr, "appending target", ((x1, y1, x2, y2))
                 self.targets.append((x1, y1, x2, y2))
+                self.targetViews.append(v)
             else:
                 #print v
                 pass
@@ -316,7 +346,9 @@ This is usually installed by python package. Check your distribution details.
         vlist.reverse()
         found = False
         for v in vlist:
-            if self.isClickableCheckableOrFocusable(v):
+            if DEBUG:
+                print >> sys.stderr, "checking if", v, "is in", self.targetViews
+            if v in self.targetViews:
                 if DEBUG_TOUCH:
                     print >> sys.stderr
                     print >> sys.stderr, "I guess you are trying to touch:", v
@@ -349,6 +381,12 @@ This is usually installed by python package. Check your distribution details.
         self.takeScreenshotAndShowItOnWindow()
 
     def touchPoint(self, x, y):
+        '''
+        Touches a point in the device screen.
+        The generated operation will use the units specified in L{coordinatesUnit} and the
+        orientation in L{vc.display['orientation']}.
+        '''
+        
         if DEBUG:
             print >> sys.stderr, 'touchPoint(%d, %d)' % (x, y)
             print >> sys.stderr, 'touchPoint:', type(x), type(y)
@@ -375,6 +413,12 @@ This is usually installed by python package. Check your distribution details.
             return
     
     def longTouchPoint(self, x, y):
+        '''
+        Long-touches a point in the device screen.
+        The generated operation will use the units specified in L{coordinatesUnit} and the
+        orientation in L{vc.display['orientation']}.
+        '''
+
         if DEBUG:
             print >> sys.stderr, 'longTouchPoint(%d, %d)' % (x, y)
         if self.areEventsDisabled:
@@ -387,7 +431,10 @@ This is usually installed by python package. Check your distribution details.
         if self.isLongTouchingPoint:
             self.showVignette()
             self.device.longTouch(x, y)
-            self.printOperation(None, Operation.LONG_TOUCH_POINT, x, y, 2000)
+            if self.coordinatesUnit == Unit.DIP:
+                x = x / self.vc.display['density']
+                y = y / self.vc.display['density']
+            self.printOperation(None, Operation.LONG_TOUCH_POINT, x, y, 2000, self.coordinatesUnit, self.vc.display['orientation'])
             self.printOperation(None, Operation.SLEEP, 5)
             self.vc.sleep(5)
             self.isLongTouchingPoint = False
@@ -498,7 +545,7 @@ This is usually installed by python package. Check your distribution details.
                     changed = True
                     break
             if changed:
-                self.window.geometry('%dx%d' % (self.device.display['width']*self.scale, self.device.display['height']*self.scale))
+                self.window.geometry('%dx%d' % (self.device.display['width']*self.scale, self.device.display['height']*self.scale+int(self.statusBar.winfo_height())))
                 self.deleteVignette()
                 self.canvas.destroy()
                 self.canvas = None
@@ -545,20 +592,34 @@ This is usually installed by python package. Check your distribution details.
         self.setDragDialogShowed(False)
 
     def onCtrlI(self, event):
+        '''
+        Toggles the touch point operation using L{Unit.DIP}.
+        This invokes L{toggleTouchPoint}.
+        '''
+
         self.coordinatesUnit = Unit.DIP
         self.toggleTouchPoint()
     
     def onCtrlL(self, event):
+        '''
+        Toggles the long touch point operation.
+        '''
+        
         if not self.isLongTouchingPoint:
             msg = 'Long touching point'
             self.toast(msg, background=Color.GREEN)
             self.statusBar.set(msg)
             self.isLongTouchingPoint = True
+            self.coordinatesUnit = Unit.DIP
         else:
             self.statusBar.clear()
             self.isLongTouchingPoint = False
 
     def toggleTouchPoint(self):
+        '''
+        Toggles the touch point operation using the units specified in L{coordinatesUnit}.
+        '''
+        
         if not self.isTouchingPoint:
             msg = 'Touching point (units=%s)' % self.coordinatesUnit
             self.toast(msg, background=Color.GREEN)
@@ -977,7 +1038,7 @@ if TKINTER_AVAILABLE:
     Ctrl-A: Toggle message area
     Ctrl-D: Drag dialog
     Ctrl-K: Control Panel
-    Ctrl-L: Long touch point
+    Ctrl-L: Long touch point using PX
     Ctrl-I: Touch using DIP
     Ctrl-P: Touch using PX
     Ctrl-Q: Quit
