@@ -58,6 +58,21 @@ class ControlPanel(Tkinter.Toplevel):
         self.child_window.column = self.child_window.row = 0
         self.create_keycode_tab()
         self.create_keyboard_tab()
+        self.devices_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.devices_tab, text="DEVICES")
+        self.create_devices_tab()
+        
+    def create_devices_tab(self):
+        self.devices_list = ['HIDE/SHOW']
+
+        for key in self.devices_list:
+            self.key = ControlPanelButton(self.devices_tab, self.culebron, self.vc, self.printOperation, value=key, text=key,
+                                               bg=Color.DARK_GRAY, fg=Color.LIGHT_GRAY,
+                                               highlightbackground=Color.DARK_GRAY)
+            if key == 'HIDE/SHOW':
+                self.key.configure(command=self.key.pressKey)
+                self.key.grid(column=self.child_window.column, row=self.child_window.row)
+            #self.tabLayout()
 
     def create_keycode_tab(self):
         ''' KEYCODE '''
@@ -125,6 +140,7 @@ class ControlPanelButton(Tkinter.Button):
         self.value = value
         self.vc = vc
         self.device = vc.device
+        self.status = False
 
     def pressKey(self):
         key = self.value
@@ -137,6 +153,13 @@ class ControlPanelButton(Tkinter.Button):
         elif key == 'KEYCODE_GO':
             self.device.press(Key.GO)
             self.printOperation(None, Operation.PRESS, Key.GO)
+        elif key == 'HIDE/SHOW':
+            if self.status == False:
+                self.culebron.window.withdraw()
+                self.status=True
+            else:
+                self.culebron.window.deiconify()
+                self.status=False
         else:
             self.device.press(key)
             self.printOperation(None, Operation.PRESS, key)
