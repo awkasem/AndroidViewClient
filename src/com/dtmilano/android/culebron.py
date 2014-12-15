@@ -99,6 +99,7 @@ class Culebron:
     vignetteId = None
     areTargetsMarked = False
     isDragDialogShowed = False
+    isContextMenuShown = False
     isGrabbingTouch = False
     isGeneratingTestCondition = False
     isTouchingPoint = False
@@ -459,6 +460,9 @@ This is usually installed by python package. Check your distribution details.
         elif self.isDragDialogShowed:
             self.toast("No touch events allowed while setting drag parameters", background=Color.GOLD)
             return
+        elif self.isContextMenuShown:
+            self.toast("CONTEXT MENU OPEN!!!!", background=Color.GOLD)
+            return
         elif self.isTouchingPoint:
             self.touchPoint(scaledX, scaledY)
         elif self.isLongTouchingPoint:
@@ -769,6 +773,14 @@ This is usually installed by python package. Check your distribution details.
             pass
         else:
             self.isGrabbingTouch = False
+
+    def setContextMenuShown(self, shown):
+        self.isContextMenuShown = shown
+        if shown:
+            pass
+        else:
+            #self.isContextMenuShown = False
+            pass
 
     def drawTouchedPoint(self, x, y):
         size = 50
@@ -1097,7 +1109,9 @@ if TKINTER_AVAILABLE:
     class ContextMenu(Tkinter.Menu):
         def __init__(self, culebron):
             Tkinter.Menu.__init__(self)
+            self.culebron = culebron
             self.window = culebron.window
+            self.culebron.setContextMenuShown(True)
             self.menu = Tkinter.Menu(self.window, tearoff=0)
             colors = ['White', 'Blue', 'Yellow', 'Red', 'Pink', 'Gray', 'Purple']
             self.selectedColor = Tkinter.StringVar()
@@ -1105,14 +1119,21 @@ if TKINTER_AVAILABLE:
       
             for item in colors:
                 self.menu.add_radiobutton(label=item, variable=self.selectedColor, command=self.changeBackgroundColor)
-
+                #self.menu.add_radiobutton(label=item, variable=self.selectedColor, command=Culebron.onCtrlA(event))
         def __call__(self, event):
-            self.window.bind("<Button-3>", self.popupMenu(event))
-            #self.popupMenu(event)
+            #self.window.bind("<Button-3>", self.popupMenu(event))
+            self.popupMenu(event)
+            #self.window.wait_window(p)
+            self.culebron.setContextMenuShown(False)
+            #self.menu.destroy()
+
+        def destroyMenu(self):
+            self.menu.destroy()
+            self.culebron.canvas.focus_set()
 
         def popupMenu(self, event):
-            self.menu.post(event.x_root, event.y_root)
-
+            #self.menu.post(event.x_root, event.y_root)
+            self.menu.tk_popup(event.x_root, event.y_root)
         def changeBackgroundColor(self):
             self.window.config(bg = self.selectedColor.get())
 
