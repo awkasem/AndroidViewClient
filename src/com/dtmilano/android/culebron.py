@@ -145,6 +145,8 @@ This is usually installed by python package. Check your distribution details.
         self.statusBar = StatusBar(self.window)
         self.statusBar.pack(side=Tkinter.BOTTOM, padx=2, pady=2, fill=Tkinter.X)
         self.statusBar.set("Always press F1 for help")
+#        self.menu = Tkinter.Menu(self.window, tearoff=0)
+#        self.popupmenu = Tkinter.Menu(self.menu)
 
     def takeScreenshotAndShowItOnWindow(self):
         '''
@@ -465,7 +467,25 @@ This is usually installed by python package. Check your distribution details.
             self.getViewContainingPointAndGenerateTestCondition(scaledX, scaledY)
         else:
             self.getViewContainingPointAndTouch(scaledX, scaledY)
-        
+
+#    def onButton3Pressed(self, event):
+#        if DEBUG:
+#            print >> sys.stderr, "onButton3Pressed((", event.x, ", ", event.y, "))"
+#        (scaledX, scaledY) = (event.x/self.scale, event.y/self.scale)
+#        if DEBUG:
+#            print >> sys.stderr, "    onButton3Pressed: scaled: (", scaledX, ", ", scaledY, ")"
+#            print >> sys.stderr, "    onButton3Pressed: is grabbing:", self.isGrabbingTouch
+#        # display the popup menu
+#        try:
+#            self.popupmenu.tk_popup(event.x_root, event.y_root, 0)
+#            self.popupmenu.add_radiobutton(label="Whatever1", command=self.printOperation(None, Operation.SLEEP, 10))
+#            self.popupmenu.add_radiobutton(label="Whatever2", command=self.printOperation(None, Operation.SLEEP, 20))
+#            #self.popupmenu.add_command(label="Whatever1", command=self.printOperation(None, Operation.SLEEP, 10))
+#            #self.popupmenu.add_command(label="Whatever2", command=self.printOperation(None, Operation.SLEEP, 20))
+#        finally:
+#        # make sure to release the grab (Tk 8.0a1 only)
+#            self.popupmenu.grab_release()
+
     def pressKey(self, keycode):
         '''
         Presses a key.
@@ -694,6 +714,8 @@ This is usually installed by python package. Check your distribution details.
     def enableEvents(self):
         self.canvas.update_idletasks()
         self.canvas.bind("<Button-1>", self.onButton1Pressed)
+        self.canvas.bind("<Button-3>", ContextMenu(self))
+        #self.canvas.bind("<Button-3>", self.onButton3Pressed)
         self.canvas.bind("<BackSpace>", self.onKeyPressed)
         #self.canvas.bind("<Control-Key-S>", self.onCtrlS)
         self.canvas.bind("<Key>", self.onKeyPressed)
@@ -1068,3 +1090,26 @@ if TKINTER_AVAILABLE:
             # put focus back to the parent window's canvas
             self.culebron.canvas.focus_set()
             self.destroy()
+
+    class ContextMenu(Tkinter.Menu):
+        def __init__(self, culebron):
+            Tkinter.Menu.__init__(self)
+            self.window = culebron.window
+            self.menu = Tkinter.Menu(self.window, tearoff=0)
+            colors = ['White', 'Blue', 'Yellow', 'Red', 'Pink', 'Gray', 'Purple']
+            self.selectedColor = Tkinter.StringVar()
+            self.selectedColor.set(colors[0])
+      
+            for item in colors:
+                self.menu.add_radiobutton(label=item, variable=self.selectedColor, command=self.changeBackgroundColor)
+
+        def __call__(self, event):
+            self.window.bind("<Button-3>", self.popupMenu(event))
+            #self.popupMenu(event)
+
+        def popupMenu(self, event):
+            self.menu.post(event.x_root, event.y_root)
+
+        def changeBackgroundColor(self):
+            self.window.config(bg = self.selectedColor.get())
+
