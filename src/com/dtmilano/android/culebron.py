@@ -99,7 +99,6 @@ class Culebron:
     vignetteId = None
     areTargetsMarked = False
     isDragDialogShowed = False
-    isContextMenuShown = False
     isGrabbingTouch = False
     isGeneratingTestCondition = False
     isTouchingPoint = False
@@ -146,8 +145,6 @@ This is usually installed by python package. Check your distribution details.
         self.statusBar = StatusBar(self.window)
         self.statusBar.pack(side=Tkinter.BOTTOM, padx=2, pady=2, fill=Tkinter.X)
         self.statusBar.set("Always press F1 for help")
-#        self.menu = Tkinter.Menu(self.window, tearoff=0)
-#        self.popupmenu = Tkinter.Menu(self.menu)
 
     def takeScreenshotAndShowItOnWindow(self):
         '''
@@ -460,9 +457,6 @@ This is usually installed by python package. Check your distribution details.
         elif self.isDragDialogShowed:
             self.toast("No touch events allowed while setting drag parameters", background=Color.GOLD)
             return
-        elif self.isContextMenuShown:
-            self.toast("CONTEXT MENU OPEN!!!!", background=Color.GOLD)
-            return
         elif self.isTouchingPoint:
             self.touchPoint(scaledX, scaledY)
         elif self.isLongTouchingPoint:
@@ -471,24 +465,6 @@ This is usually installed by python package. Check your distribution details.
             self.getViewContainingPointAndGenerateTestCondition(scaledX, scaledY)
         else:
             self.getViewContainingPointAndTouch(scaledX, scaledY)
-
-#    def onButton3Pressed(self, event):
-#        if DEBUG:
-#            print >> sys.stderr, "onButton3Pressed((", event.x, ", ", event.y, "))"
-#        (scaledX, scaledY) = (event.x/self.scale, event.y/self.scale)
-#        if DEBUG:
-#            print >> sys.stderr, "    onButton3Pressed: scaled: (", scaledX, ", ", scaledY, ")"
-#            print >> sys.stderr, "    onButton3Pressed: is grabbing:", self.isGrabbingTouch
-#        # display the popup menu
-#        try:
-#            self.popupmenu.tk_popup(event.x_root, event.y_root, 0)
-#            self.popupmenu.add_radiobutton(label="Whatever1", command=self.printOperation(None, Operation.SLEEP, 10))
-#            self.popupmenu.add_radiobutton(label="Whatever2", command=self.printOperation(None, Operation.SLEEP, 20))
-#            #self.popupmenu.add_command(label="Whatever1", command=self.printOperation(None, Operation.SLEEP, 10))
-#            #self.popupmenu.add_command(label="Whatever2", command=self.printOperation(None, Operation.SLEEP, 20))
-#        finally:
-#        # make sure to release the grab (Tk 8.0a1 only)
-#            self.popupmenu.grab_release()
 
     def pressKey(self, keycode):
         '''
@@ -717,12 +693,11 @@ This is usually installed by python package. Check your distribution details.
         self.printOperation(None, Operation.SLEEP, 1)
         self.vc.sleep(1)
         self.takeScreenshotAndShowItOnWindow()
-        
+
     def enableEvents(self):
         self.canvas.update_idletasks()
         self.canvas.bind("<Button-1>", self.onButton1Pressed)
         self.canvas.bind("<Button-3>", ContextMenu(self))
-        #self.canvas.bind("<Button-3>", self.onButton3Pressed)
         self.canvas.bind("<BackSpace>", self.onKeyPressed)
         #self.canvas.bind("<Control-Key-S>", self.onCtrlS)
         self.canvas.bind("<Key>", self.onKeyPressed)
@@ -773,14 +748,6 @@ This is usually installed by python package. Check your distribution details.
             pass
         else:
             self.isGrabbingTouch = False
-
-    def setContextMenuShown(self, shown):
-        self.isContextMenuShown = shown
-        if shown:
-            pass
-        else:
-            #self.isContextMenuShown = False
-            pass
 
     def drawTouchedPoint(self, x, y):
         size = 50
@@ -1111,29 +1078,63 @@ if TKINTER_AVAILABLE:
             Tkinter.Menu.__init__(self)
             self.culebron = culebron
             self.window = culebron.window
-            self.culebron.setContextMenuShown(True)
             self.menu = Tkinter.Menu(self.window, tearoff=0)
-            colors = ['White', 'Blue', 'Yellow', 'Red', 'Pink', 'Gray', 'Purple']
-            self.selectedColor = Tkinter.StringVar()
-            self.selectedColor.set(colors[0])
-      
-            for item in colors:
-                self.menu.add_radiobutton(label=item, variable=self.selectedColor, command=self.changeBackgroundColor)
-                #self.menu.add_radiobutton(label=item, variable=self.selectedColor, command=Culebron.onCtrlA(event))
+            self.createPopupMenu(self)
+            self.command = None
+            self.var = Tkinter.StringVar(self.menu)
+            self.var.set("one")
+
         def __call__(self, event):
-            #self.window.bind("<Button-3>", self.popupMenu(event))
-            self.popupMenu(event)
-            #self.window.wait_window(p)
-            self.culebron.setContextMenuShown(False)
-            #self.menu.destroy()
+            p = self.showPopupMenu(event)
+            #self.menu.wait_window(p)
 
-        def destroyMenu(self):
-            self.menu.destroy()
-            self.culebron.canvas.focus_set()
+        def createPopupMenu(self, event):
+            commandList = {
+                       'Ctrl-A':' Toggle message area',
+                       'Ctrl-D':' Drag dialog',
+                       'Ctrl-K':' Control Panel',
+                       'Ctrl-L':' Long touch point using PX',
+                       'Ctrl-I':' Touch using DIP',
+                       'Ctrl-P':' Touch using PX',
+                       'Ctrl-Q':' Quit',
+                       'Ctrl-S':' Generates a sleep() on output script',
+                       'Ctrl-T':' Toggle generating test condition',
+                       'Ctrl-Z':' Touch zones'
+                      }
 
-        def popupMenu(self, event):
-            #self.menu.post(event.x_root, event.y_root)
+            for self.command, discription in commandList.items():
+                print self.command
+                self.menu.add_command(label=discription, command=self.runCommands)
+                #self.menu.add_radiobutton(label=discription)
+                #self.menu.add_radiobutton(label=discription, command=self.runCommands(event, command))
+                #self.menu.add_radiobutton(label=discription, command=self.window.destroy)
+            #self.menu.bind( "<Button-1>", self.runCommands(self.command, event))
+
+        def showPopupMenu(self, event):
             self.menu.tk_popup(event.x_root, event.y_root)
-        def changeBackgroundColor(self):
-            self.window.config(bg = self.selectedColor.get())
 
+
+        def runCommands(self, command, event):
+            print command
+            if command == 'Ctrl-A':
+                self.culebron.onCtrlA(event)
+            if command == 'Ctrl-D':
+                self.culebron.onCtrlD(event)
+            if command == 'Ctrl-K':
+                self.culebron.onCtrlK(event)
+            if command == 'Ctrl-L':
+                self.culebron.onCtrlL(event)
+            if command == 'Ctrl-I':
+                self.culebron.onCtrlI(event)
+            if command == 'Ctrl-P':
+                self.culebron.onCtrlP(event)
+            if command == 'Ctrl-Q':
+                self.culebron.onCtrlQ(event)
+            if command == 'Ctrl-S':
+                self.culebron.onCtrlS(event)
+            if command == 'Ctrl-T':
+                self.culebron.onCtrlT(event)
+            if command == 'Ctrl-Z':
+                self.culebron.onCtrlZ(event)
+            else:
+                print "function failed"
