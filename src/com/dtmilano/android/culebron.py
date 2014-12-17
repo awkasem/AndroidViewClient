@@ -1039,19 +1039,28 @@ if TKINTER_AVAILABLE:
 
         def createPopupMenu(self, event):
             self.commandList = {
-                       'Ctrl-A':' Toggle message area',
-                       'Ctrl-D':' Drag dialog',
-                       'Ctrl-K':' Control Panel',
-                       'Ctrl-L':' Long touch point using PX',
-                       'Ctrl-I':' Touch using DIP',
-                       'Ctrl-P':' Touch using PX',
-                       'Ctrl-Q':' Quit',
-                       'Ctrl-S':' Generates a sleep() on output script',
-                       'Ctrl-T':' Toggle generating test condition',
-                       'Ctrl-Z':' Touch zones'
-                      }
+                                #'Ctrl-Q':' Quit',
+                                'Ctrl-A':' Toggle message area',
+                                'Ctrl-D':' Drag dialog',
+                                'Ctrl-K':' Control Panel',
+                                'Ctrl-L':' Long touch point using PX',
+                                'Ctrl-I':' Touch using DIP',
+                                'Ctrl-P':' Touch using PX',
+                                'Ctrl-S':' Generates a sleep() on output script',
+                                'Ctrl-T':' Toggle generating test condition',
+                                'Ctrl-Z':' Touch zones'
+                               }
 
             for command, discription in self.commandList.items():
+                self.command = ContextMenuItem(self.menu, self.culebron, event, value=command, text=discription)
+                self.menu.add_command(label=discription, command=self.command.pressMenuItem)
+
+            self.quitCommand = {
+                                'Ctrl-Q':' Quit',
+                               }
+
+            self.menu.add_separator()
+            for command, discription in self.quitCommand.items():
                 self.command = ContextMenuItem(self.menu, self.culebron, event, value=command, text=discription)
                 self.menu.add_command(label=discription, command=self.command.pressMenuItem)
 
