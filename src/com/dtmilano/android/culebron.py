@@ -1027,6 +1027,7 @@ if TKINTER_AVAILABLE:
     class ContextMenu(Tkinter.Menu):
         def __init__(self, culebron):
             Tkinter.Menu.__init__(self)
+            self.culebron = culebron
             self.window = culebron.window
             self.menu = Tkinter.Menu(self.window, tearoff=0)
             self.createPopupMenu(self)
@@ -1051,8 +1052,8 @@ if TKINTER_AVAILABLE:
                       }
 
             for command, discription in self.commandList.items():
-                self.command = ContextMenuItem(self.menu, value=command, text=discription)
-                self.menu.add_command(label=discription, command=self.command.pressKey)
+                self.command = ContextMenuItem(self.menu, self.culebron, event, value=command, text=discription)
+                self.menu.add_command(label=discription, command=self.command.pressMenuItem)
 
         def showPopupMenu(self, event):
             self.menu.tk_popup(event.x_root, event.y_root)
@@ -1060,13 +1061,36 @@ if TKINTER_AVAILABLE:
 
     class ContextMenuItem(Tkinter.Menu):
 
-        def __init__(self, parent, value=None, **kwargs):
+        def __init__(self, parent, culebron, event, value=None, **kwargs):
             Tkinter.Menu.__init__(self, parent)
+            self.culebron = culebron
             self.value = value
+            self.event = event
 
-        def pressKey(self):
+        def pressMenuItem(self):
             command = self.value
-            print "Clicked on ", command
+            if command == 'Ctrl-A':
+                self.culebron.onCtrlA(self.event)
+            elif command == 'Ctrl-D':
+                self.culebron.onCtrlD(self.event)
+            elif command == 'Ctrl-K':
+                self.culebron.onCtrlK(self.event)
+            elif command == 'Ctrl-L':
+                self.culebron.onCtrlL(self.event)
+            elif command == 'Ctrl-I':
+                self.culebron.onCtrlI(self.event)
+            elif command == 'Ctrl-P':
+                self.culebron.onCtrlP(self.event)
+            elif command == 'Ctrl-Q':
+                self.culebron.onCtrlQ(self.event)
+            elif command == 'Ctrl-S':
+                self.culebron.onCtrlS(self.event)
+            elif command == 'Ctrl-T':
+                self.culebron.onCtrlT(self.event)
+            elif command == 'Ctrl-Z':
+                self.culebron.onCtrlZ(self.event)
+            else:
+                print "Command not exist!"
 
     class HelpDialog(Tkinter.Toplevel):
     
