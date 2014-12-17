@@ -19,12 +19,13 @@ limitations under the License.
 
 '''
 
-__version__ = '8.18.1'
+__version__ = '8.21.2'
 
 import sys
 import threading
 import warnings
 import copy
+import string
 
 try:
     from PIL import Image, ImageTk
@@ -76,10 +77,13 @@ class Operation:
     TYPE = 'type'
     PRESS = 'press'
     SLEEP = 'sleep'
+    TRAVERSE = 'traverse'
 
 class Culebron:
     APPLICATION_NAME = "Culebra"
 
+    UPPERCASE_CHARS = string.uppercase[:26]
+    
     KEYSYM_TO_KEYCODE_MAP = {
         'Home': 'HOME',
         'BackSpace': 'BACK',
@@ -270,6 +274,20 @@ This is usually installed by python package. Check your distribution details.
             self.canvas.delete(self.waitMessageId)
             self.waitMessageId = None
 
+    def showPopupMenu(self, event):
+        self.popup = Tkinter.Menu(self.window, tearoff=0)
+        (scaledX, scaledY) = (event.x/self.scale, event.y/self.scale)
+        v = self.findViewContainingPointInTargets(scaledX, scaledY)
+        label = "Not implemented yet"
+        if v:
+            label += "\nYou clicked on " + v.__tinyStr__()
+        self.popup.add_command(label=label)
+        try:
+            self.popup.tk_popup(event.x, event.y, 0)
+        finally:
+            # make sure to release the grab (Tk 8.0a1 only)
+            self.popup.grab_release()
+        
     def showHelp(self):
         d = HelpDialog(self)
         self.window.wait_window(d)
@@ -329,6 +347,22 @@ This is usually installed by python package. Check your distribution details.
                 break
                 
 
+
+    def findViewContainingPointInTargets(self, x, y):
+        vlist = self.vc.findViewsContainingPoint((x, y))
+        vlist.reverse()
+        for v in vlist:
+            if DEBUG:
+                print >> sys.stderr, "checking if", v, "is in", self.targetViews
+            if v in self.targetViews:
+                if DEBUG_TOUCH:
+                    print >> sys.stderr
+                    print >> sys.stderr, "I guess you are trying to touch:", v
+                    print >> sys.stderr
+                return v
+        
+        return None
+
     def getViewContainingPointAndTouch(self, x, y):
         if DEBUG:
             print >> sys.stderr, 'getViewContainingPointAndTouch(%d, %d)' % (x, y)
@@ -342,29 +376,22 @@ This is usually installed by python package. Check your distribution details.
         if DEBUG_POINT:
             print >> sys.stderr, "getViewsContainingPointAndTouch(x=%s, y=%s)" % (x, y)
             print >> sys.stderr, "self.vc=", self.vc
-        vlist = self.vc.findViewsContainingPoint((x, y))
-        vlist.reverse()
-        found = False
-        for v in vlist:
-            if DEBUG:
-                print >> sys.stderr, "checking if", v, "is in", self.targetViews
-            if v in self.targetViews:
-                if DEBUG_TOUCH:
-                    print >> sys.stderr
-                    print >> sys.stderr, "I guess you are trying to touch:", v
-                    print >> sys.stderr
-                found = True
-                break
-        if not found:
+        v = self.findViewContainingPointInTargets(x, y)
+        if v is None:
             self.hideVignette()
             msg = "There are no clickable views here!"
             self.toast(msg)
             return
         clazz = v.getClass()
         if clazz == 'android.widget.EditText':
+            title = "EditText"
+            kwargs = {}
             if DEBUG:
                 print >>sys.stderr, v
-            text = tkSimpleDialog.askstring("EditText", "Enter text to type into this EditText")
+            if v.isPassword():
+                title = "Password"
+                kwargs = {'show': '*'}
+            text = tkSimpleDialog.askstring(title, "Enter text to type into this field", **kwargs)
             self.canvas.focus_set()
             if text:
                 v.type(text)
@@ -465,7 +492,12 @@ This is usually installed by python package. Check your distribution details.
             self.getViewContainingPointAndGenerateTestCondition(scaledX, scaledY)
         else:
             self.getViewContainingPointAndTouch(scaledX, scaledY)
-
+    
+    def onButton2Pressed(self, event):
+        if DEBUG:
+            print >> sys.stderr, "onButton2Pressed((", event.x, ", ", event.y, "))"
+        self.showPopupMenu(event)
+            
     def pressKey(self, keycode):
         '''
         Presses a key.
@@ -498,40 +530,9 @@ This is usually installed by python package. Check your distribution details.
         ###
         ### internal commands: no output to generated script
         ###
-        # FIXME: use a map
-        if char == '\x01':
-            self.onCtrlA(event)
-            return
-        elif char == '\x04':
-            self.onCtrlD(event)
-            return
-        elif char == '\x09':
-            self.onCtrlI(event)
-            return
-        elif char == '\x0B':
-            self.onCtrlK(event)
-            return
-        elif char == '\x0c':
-            self.onCtrlL(event)
-            return
-        elif char == '\x10':
-            self.onCtrlP(event)
-            return
-        elif char == '\x11':
-            self.onCtrlQ(event)
-            return 
-        elif char == '\x13':
-            self.onCtrlS(event)
-            return
-        elif char == '\x14':
-            self.onCtrlT(event)
-            return
-        elif char == '\x15':
-            self.onCtrlU(event)
-            return
-        elif char == '\x1a':
-            self.onCtrlZ(event)
-            return
+        handler = getattr(self, 'onCtrl%s' % self.UPPERCASE_CHARS[ord(char)-1])
+        if handler:
+            return handler(event)
         elif keysym == 'F1':
             self.showHelp()
             return
@@ -668,6 +669,11 @@ This is usually installed by python package. Check your distribution details.
         if DEBUG:
             print >>sys.stderr, "onCtrlU()"
     
+    def onCtrlV(self, event):
+        if DEBUG:
+            print >>sys.stderr, "onCtrlV()"
+        self.printOperation(None, Operation.TRAVERSE)
+        
     def onCtrlZ(self, event):
         if DEBUG:
             print >> sys.stderr, "onCtrlZ()"
@@ -693,10 +699,11 @@ This is usually installed by python package. Check your distribution details.
         self.printOperation(None, Operation.SLEEP, 1)
         self.vc.sleep(1)
         self.takeScreenshotAndShowItOnWindow()
-
+        
     def enableEvents(self):
         self.canvas.update_idletasks()
         self.canvas.bind("<Button-1>", self.onButton1Pressed)
+        self.canvas.bind("<Button-2>", self.onButton2Pressed)
         self.canvas.bind("<Button-3>", ContextMenu(self))
         self.canvas.bind("<BackSpace>", self.onKeyPressed)
         #self.canvas.bind("<Control-Key-S>", self.onCtrlS)
@@ -708,6 +715,8 @@ This is usually installed by python package. Check your distribution details.
             self.canvas.update_idletasks()
             self.areEventsDisabled = True
             self.canvas.unbind("<Button-1>")
+            self.canvas.unbind("<Button-2>")
+            self.canvas.unbind("<Button-3>")
             self.canvas.unbind("<BackSpace>")
             #self.canvas.unbind("<Control-Key-S>")
             self.canvas.unbind("<Key>")
@@ -1015,7 +1024,50 @@ if TKINTER_AVAILABLE:
             self.__cleanUpSpId()
             self.__cleanUpEpId()
     
-    
+    class ContextMenu(Tkinter.Menu):
+        def __init__(self, culebron):
+            Tkinter.Menu.__init__(self)
+            self.window = culebron.window
+            self.menu = Tkinter.Menu(self.window, tearoff=0)
+            self.createPopupMenu(self)
+            self.command = None
+
+        def __call__(self, event):
+            p = self.showPopupMenu(event)
+            self.menu.wait_window(p)
+
+        def createPopupMenu(self, event):
+            self.commandList = {
+                       'Ctrl-A':' Toggle message area',
+                       'Ctrl-D':' Drag dialog',
+                       'Ctrl-K':' Control Panel',
+                       'Ctrl-L':' Long touch point using PX',
+                       'Ctrl-I':' Touch using DIP',
+                       'Ctrl-P':' Touch using PX',
+                       'Ctrl-Q':' Quit',
+                       'Ctrl-S':' Generates a sleep() on output script',
+                       'Ctrl-T':' Toggle generating test condition',
+                       'Ctrl-Z':' Touch zones'
+                      }
+
+            for command, discription in self.commandList.items():
+                self.command = ContextMenuItem(self.menu, value=command, text=discription)
+                self.menu.add_command(label=discription, command=self.command.pressKey)
+
+        def showPopupMenu(self, event):
+            self.menu.tk_popup(event.x_root, event.y_root)
+
+
+    class ContextMenuItem(Tkinter.Menu):
+
+        def __init__(self, parent, value=None, **kwargs):
+            Tkinter.Menu.__init__(self, parent)
+            self.value = value
+
+        def pressKey(self):
+            command = self.value
+            print "Clicked on ", command
+
     class HelpDialog(Tkinter.Toplevel):
     
         def __init__(self, culebron):
@@ -1048,6 +1100,7 @@ if TKINTER_AVAILABLE:
     Ctrl-Q: Quit
     Ctrl-S: Generates a sleep() on output script
     Ctrl-T: Toggle generating test condition
+    Ctrl-V: Verifies the content of the screen dump
     Ctrl-Z: Touch zones
     ''')
             self.text.pack()
@@ -1072,69 +1125,3 @@ if TKINTER_AVAILABLE:
             # put focus back to the parent window's canvas
             self.culebron.canvas.focus_set()
             self.destroy()
-
-    class ContextMenu(Tkinter.Menu):
-        def __init__(self, culebron):
-            Tkinter.Menu.__init__(self)
-            self.culebron = culebron
-            self.window = culebron.window
-            self.menu = Tkinter.Menu(self.window, tearoff=0)
-            self.createPopupMenu(self)
-            self.command = None
-            self.var = Tkinter.StringVar(self.menu)
-            self.var.set("one")
-
-        def __call__(self, event):
-            p = self.showPopupMenu(event)
-            #self.menu.wait_window(p)
-
-        def createPopupMenu(self, event):
-            commandList = {
-                       'Ctrl-A':' Toggle message area',
-                       'Ctrl-D':' Drag dialog',
-                       'Ctrl-K':' Control Panel',
-                       'Ctrl-L':' Long touch point using PX',
-                       'Ctrl-I':' Touch using DIP',
-                       'Ctrl-P':' Touch using PX',
-                       'Ctrl-Q':' Quit',
-                       'Ctrl-S':' Generates a sleep() on output script',
-                       'Ctrl-T':' Toggle generating test condition',
-                       'Ctrl-Z':' Touch zones'
-                      }
-
-            for self.command, discription in commandList.items():
-                print self.command
-                self.menu.add_command(label=discription, command=self.runCommands)
-                #self.menu.add_radiobutton(label=discription)
-                #self.menu.add_radiobutton(label=discription, command=self.runCommands(event, command))
-                #self.menu.add_radiobutton(label=discription, command=self.window.destroy)
-            #self.menu.bind( "<Button-1>", self.runCommands(self.command, event))
-
-        def showPopupMenu(self, event):
-            self.menu.tk_popup(event.x_root, event.y_root)
-
-
-        def runCommands(self, command, event):
-            print command
-            if command == 'Ctrl-A':
-                self.culebron.onCtrlA(event)
-            if command == 'Ctrl-D':
-                self.culebron.onCtrlD(event)
-            if command == 'Ctrl-K':
-                self.culebron.onCtrlK(event)
-            if command == 'Ctrl-L':
-                self.culebron.onCtrlL(event)
-            if command == 'Ctrl-I':
-                self.culebron.onCtrlI(event)
-            if command == 'Ctrl-P':
-                self.culebron.onCtrlP(event)
-            if command == 'Ctrl-Q':
-                self.culebron.onCtrlQ(event)
-            if command == 'Ctrl-S':
-                self.culebron.onCtrlS(event)
-            if command == 'Ctrl-T':
-                self.culebron.onCtrlT(event)
-            if command == 'Ctrl-Z':
-                self.culebron.onCtrlZ(event)
-            else:
-                print "function failed"
