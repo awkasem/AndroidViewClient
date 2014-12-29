@@ -17,7 +17,7 @@ limitations under the License.
 @author: Diego Torres Milano
 '''
 
-__version__ = '8.18.1'
+__version__ = '8.25.0'
 
 import sys
 import warnings
@@ -40,7 +40,7 @@ import platform
 from com.dtmilano.android.adb.androidkeymap import KEY_MAP
 
 DEBUG = False
-DEBUG_TOUCH = DEBUG and True
+DEBUG_TOUCH = DEBUG and False
 
 HOSTNAME = 'localhost'
 try:
@@ -239,12 +239,15 @@ class AdbClient:
         self.checkConnected()
         serialnoRE = re.compile(self.serialno)
         found = False
-        for device in self.getDevices():
+        devices = self.getDevices()
+        if len(devices) == 0:
+            raise RuntimeError("ERROR: There are no connected devices")
+        for device in devices:
             if serialnoRE.match(device.serialno):
                 found = True
                 break
         if not found:
-            raise RuntimeError("ERROR: couldn't find device that matches '%s'" % self.serialno)
+            raise RuntimeError("ERROR: couldn't find device that matches '%s' in %s" % (self.serialno, devices))
         self.serialno = device.serialno
         msg = 'host:transport:%s' % self.serialno
         if DEBUG:
@@ -255,13 +258,13 @@ class AdbClient:
     def __readExactly(self, sock, size):
         if DEBUG:
             print >> sys.stderr, "__readExactly(socket=%s, size=%d)" % (socket, size)
-        buffer = ''
-        while len(buffer) < size:
-            data = sock.recv(size-len(buffer))
+        _buffer = ''
+        while len(_buffer) < size:
+            data = sock.recv(size-len(_buffer))
             if not data:
                 break
-            buffer+=data
-        return buffer
+            _buffer+=data
+        return _buffer
 
     def getDevices(self):
         if DEBUG:
@@ -341,7 +344,7 @@ class AdbClient:
                 for prop in [ 'width', 'height', 'orientation' ]:
                     self.__displayInfo[prop] = int(m.group(prop))
                 for prop in [ 'density' ]:
-                    d = self.__getDisplayDensity(None, strip=True, invokeGetPhysicalDisplayIfNotFound=False)
+                    d = self.__getDisplayDensity(None, strip=True, invokeGetPhysicalDisplayIfNotFound=True)
                     if d:
                         self.__displayInfo[prop] = d
                     else:
@@ -427,7 +430,7 @@ class AdbClient:
         return -1
 
     def __getDisplayDensity(self, key, strip=True, invokeGetPhysicalDisplayIfNotFound=True):
-        if self.__displayInfo and 'density' in self.__displayInfo:
+        if self.__displayInfo and 'density' in self.__displayInfo: # and self.__displayInfo['density'] != -1: # FIXME: need more testing
             return self.__displayInfo['density']
         BASE_DPI = 160.0
         d = self.getProperty('ro.sf.lcd_density', strip)
@@ -647,10 +650,11 @@ class AdbClient:
 
         if orientation == -1:
             orientation = self.display['orientation']
-        x0 = x0 * self.display['density']
-        y0 = y0 * self.display['density']
-        x1 = x1 * self.display['density']
-        y1 = y1 * self.display['density']
+        density = self.display['density'] if self.display['density'] > 0 else 1
+        x0 = x0 * density
+        y0 = y0 * density
+        x1 = x1 * density
+        y1 = y1 * density
         self.drag((x0, y0), (x1, y1), duration, steps, orientation)
         
     def type(self, text):
@@ -751,6 +755,11 @@ class AdbClient:
         self.display['height'] = self.getProperty('display.height')
         self.display['density'] = self.getProperty('display.density')
         self.display['orientation'] = self.getProperty('display.orientation')
+        
+    def log(self, tag, message, priority='D', verbose=False):
+        if verbose or priority == 'V':
+            print >> sys.stderr, tag+':', message
+        self.shell('log -p %c -t "%s" %s' % (priority, tag, message))
 
 
 

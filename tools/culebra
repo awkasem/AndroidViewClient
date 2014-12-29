@@ -19,7 +19,7 @@ ___________________/  /__/  /__/  /__/  /________________________________
 
 '''
 
-__version__ = '8.18.1'
+__version__ = '8.25.0'
 
 import re
 import sys
@@ -249,6 +249,7 @@ You have to set PYTHONIOENCODING environment variable. For example:
             if options[CulebraOptions.MULTI_DEVICE]:
                 print u'%s[vc.findViewWithTextOrRaise(%s).touch() for vc in %sallVcs()]' % (indent, text, prefix)
             else:
+                logAction(u'touching view with text=%s' % text)
                 print u'%s%svc.findViewWithTextOrRaise(%s).touch()' % (indent, prefix, text)
         elif op == Operation.TYPE:
             if options[CulebraOptions.MULTI_DEVICE]:
@@ -294,6 +295,7 @@ def printFindViewWithContentDescription(view, useregexp, op=Operation.ASSIGN, ar
             if options[CulebraOptions.MULTI_DEVICE]:
                 warnings.warn('Multi-device not implemented yet for this case')
             else:
+                logAction(u'touching view with content-description=%s' % contentDescription)
                 print '%s%svc.findViewWithContentDescriptionOrRaise(%s).touch()' % (indent, prefix, contentDescription)
         elif op == Operation.TYPE:
             if options[CulebraOptions.MULTI_DEVICE]:
@@ -328,8 +330,10 @@ def printFindViewById(view, op=Operation.ASSIGN, arg=None):
             print '%s%s = %svc.findViewByIdOrRaise("%s")' % (indent, var, prefix, _id)
     elif op == Operation.TOUCH_VIEW:
         if options[CulebraOptions.MULTI_DEVICE]:
+            logAction(u'touching views with id=%s in all devices' % _id)
             print '%s[vc.findViewByIdOrRaise("%s").touch() for vc in %sallVcs()]' % (indent, _id, prefix)
         else:
+            logAction(u'touching view with id=%s' % _id)
             print '%s%svc.findViewByIdOrRaise("%s").touch()' % (indent, prefix, _id)
     elif op == Operation.TYPE:
         if options[CulebraOptions.MULTI_DEVICE]:
@@ -344,6 +348,16 @@ def printFindViewById(view, op=Operation.ASSIGN, arg=None):
     else:
         error("Invalid operation: %s" % op)
 
+
+def printTraverse():
+    '''
+    Prints the result of traversing the tree
+    '''
+    
+    print 
+    vc.traverse(transform=transform)
+    print
+
 def printDump(window):
     '''
     Prints a dump
@@ -353,6 +367,9 @@ def printDump(window):
         print '%s[vc.dump(window=%d) for vc in %sallVcs()]' % (indent, window, prefix)
     else:
         print '%s%svc.dump(window=%d)' % (indent, prefix, window)
+    
+    if not options[CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP]:
+        printTraverse()
     
 def printSleep(secs):
     '''
@@ -370,8 +387,10 @@ def printPress(keycode):
     '''
     
     if options[CulebraOptions.MULTI_DEVICE]:
+        logAction(u'pressing key=%s on all devices' % keycode)
         print '%s[vc.device.press("%s") for vc in %sallVcs()]' % (indent, keycode, prefix)
     else:
+        logAction(u'pressing key=%s' % keycode)
         print '%s%svc.device.press("%s")' % (indent, prefix, keycode)
     
 def printDrag(start, end, duration, steps, unit, orientation):
@@ -401,11 +420,13 @@ def printTouch(x, y, unit, orientation):
         if options[CulebraOptions.MULTI_DEVICE]:
             warnings.warn('Multi-device not implemented yet for this case')
         else:
+            logAction(u'touching point by PX @ (%s, %s) orientation=%s' % (x, y, orientation))
             print '%s%svc.device.touch(%s, %s, %s)' % (indent, prefix, x, y, orientation)
     elif unit == Unit.DIP:
         if options[CulebraOptions.MULTI_DEVICE]:
             warnings.warn('Multi-device not implemented yet for this case')
         else:
+            logAction(u'touching point by DIP @ (%s, %s) orientation=%s' % (x, y, orientation))
             print '%s%svc.device.touchDip(%s, %s, %s)' % (indent, prefix, x, y, orientation)
     else:
         raise RuntimeError('Invalid unit: %s' % unit)
@@ -496,6 +517,9 @@ def printOperation(view, op, *args):
     elif op == Operation.LONG_TOUCH_POINT:
         printLongTouch(args[0], args[1], args[2], args[3], args[4])
         return
+    elif op == Operation.TRAVERSE:
+        printTraverse()
+        return
     
     bd = Descriptor.findBestDescriptor(view)
     if bd == Descriptor.CONTENT_DESCRIPTION:
@@ -577,6 +601,13 @@ except:
     pass
 '''
 
+def printLogAction(action, priority='D'):
+    print '%s%slog("%s", "%s")' % (indent, prefix, action, priority)
+    
+def logAction(action):
+    if options[CulebraOptions.LOG_ACTIONS]:
+        printLogAction(action)
+    
 def runCulebron():
     Culebron.checkDependencies()
     culebron = Culebron(vc, printOperation, options[CulebraOptions.SCALE])
@@ -605,10 +636,11 @@ options = {CulebraOptions.FIND_VIEWS_BY_ID: True, CulebraOptions.FIND_VIEWS_WITH
         CulebraOptions.WINDOW:-1, CulebraOptions.PREPEND_TO_SYS_PATH: False,
         CulebraOptions.SAVE_SCREENSHOT: None, CulebraOptions.SAVE_VIEW_SCREENSHOTS: None,
         CulebraOptions.GUI: False,
-        CulebraOptions.DO_NOT_VERIFY_INITIAL_SCREEN_DUMP: False,
+        CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP: False,
         CulebraOptions.SCALE: 1,
         CulebraOptions.ORIENTATION_LOCKED: None,
         CulebraOptions.MULTI_DEVICE: False,
+        CulebraOptions.LOG_ACTIONS: False,
         }
 transform = traverseAndPrint
 for o, a in optlist:
@@ -680,8 +712,8 @@ for o, a in optlist:
         options[CulebraOptions.SAVE_VIEW_SCREENSHOTS] = a
     elif o in ['G', CulebraOptions.GUI]:
         options[CulebraOptions.GUI] = True
-    elif o in ['u', CulebraOptions.DO_NOT_VERIFY_INITIAL_SCREEN_DUMP]:
-        options[CulebraOptions.DO_NOT_VERIFY_INITIAL_SCREEN_DUMP] = True
+    elif o in ['u', CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP]:
+        options[CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP] = True
     elif o in ['P', CulebraOptions.SCALE]:
         options[CulebraOptions.SCALE] = float(a)
     elif o in ['O', CulebraOptions.ORIENTATION_LOCKED]:
@@ -693,6 +725,8 @@ for o, a in optlist:
         serialno = __devices[0]
     elif o in ['m', CulebraOptions.MULTI_DEVICE]:
         options[CulebraOptions.MULTI_DEVICE] = True
+    elif o in ['L', CulebraOptions.LOG_ACTIONS]:
+        options[CulebraOptions.LOG_ACTIONS] = True
 
 if not (options[CulebraOptions.FIND_VIEWS_BY_ID] or options[CulebraOptions.FIND_VIEWS_WITH_TEXT] or options[CulebraOptions.FIND_VIEWS_WITH_CONTENT_DESCRIPTION]):
     if not options[CulebraOptions.VERBOSE_COMMENTS]:
@@ -773,7 +807,7 @@ class CulebraTests(CulebraTestCase):
     indent = ' ' * 8
     prefix = 'self.'
     
-    if not options[CulebraOptions.DO_NOT_VERIFY_INITIAL_SCREEN_DUMP]:
+    if not options[CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP]:
         print '''\
         self.vc.dump(%s)
         ''' % getWindowOption()
@@ -827,7 +861,7 @@ vc.writeImageToFile('%s')
 ''' % (options[CulebraOptions.UNIT_TEST_METHOD])
         indent = ' ' * 8
         prefix = 'self.'
-    if not options[CulebraOptions.DO_NOT_VERIFY_INITIAL_SCREEN_DUMP]:
+    if not options[CulebraOptions.DO_NOT_VERIFY_SCREEN_DUMP]:
         vc.traverse(transform=transform)
         print
 

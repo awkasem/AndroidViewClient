@@ -430,8 +430,8 @@ class ViewClientTest(unittest.TestCase):
         viewsbyId = vc.getViewsById()
         self.assertNotEquals(None, viewsbyId)
         for k, v in viewsbyId.items():
-            self.assertTrue(isinstance(k, str))
-            self.assertTrue(isinstance(v, View), "v=" + str(v) + " is not a View")
+            self.assertTrue(isinstance(k, str) or isinstance(k, unicode))
+            self.assertTrue(isinstance(v, View), "v=" + unicode(v) + " is not a View")
             self.assertTrue(re.match("id/.*", v.getUniqueId()) != None)
             self.assertEquals(k, v.getUniqueId())
 
@@ -576,12 +576,12 @@ MOCK@412a9d08 mID=7,id/test drawing:mForeground=4,null padding:mForegroundPaddin
 
     def testFindViewByIdOrRaise_api17(self):
         vc = self.__mockTree(version=17)
-        vc.traverse()
+        vc.traverse(stream=self.openDevNull())
         vc.findViewByIdOrRaise('id/no_id/9')
 
     def testFindViewByIdOrRaise_api17_zh(self):
         vc = self.__mockTree(version=17, language='zh')
-        vc.traverse()
+        vc.traverse(stream=self.openDevNull())
         vc.findViewByIdOrRaise('id/no_id/21')
 
     def testFindViewByIdOrRaise_nonExistentView(self):
@@ -822,9 +822,12 @@ MOCK@412a9d08 mID=7,id/test drawing:mForeground=4,null padding:mForegroundPaddin
         vc = self.__mockTree(version=17)
         vc.findViewWithTextOrRaise("Apps")
 
+    def openDevNull(self):
+        return open('/dev/null', 'a+')
+
     def testFindViewWithTextOrRaise_api17_zh(self):
         vc = self.__mockTree(version=17, language='zh')
-        vc.traverse(transform=ViewClient.TRAVERSE_CIT)
+        vc.traverse(transform=ViewClient.TRAVERSE_CIT, stream=self.openDevNull())
         vc.findViewWithTextOrRaise(u'语言')
 
     def testFindViewWithTextOrRaise_nonExistent_api17(self):
@@ -1057,7 +1060,7 @@ MOCK@412a9d08 mID=7,id/test drawing:mForeground=4,null padding:mForegroundPaddin
         try:
             device = MockDevice(version=15, startviewserver=True)
             vc = ViewClient(device, device.serialno, adb=TRUE)
-            list = vc.findViewsContainingPoint((200, 200), filter=View.isClickable)
+            list = vc.findViewsContainingPoint((200, 200), _filter=View.isClickable)
             self.assertNotEquals(None, list)
             self.assertNotEquals(0, len(list))
         finally:
@@ -1067,7 +1070,7 @@ MOCK@412a9d08 mID=7,id/test drawing:mForeground=4,null padding:mForegroundPaddin
     def testFindViewsContainingPoint_filterApi17(self):
         device = MockDevice(version=17)
         vc = ViewClient(device, device.serialno, adb=TRUE)
-        list = vc.findViewsContainingPoint((55, 75), filter=View.isClickable)
+        list = vc.findViewsContainingPoint((55, 75), _filter=View.isClickable)
         self.assertNotEquals(None, list)
         self.assertNotEquals(0, len(list))
 

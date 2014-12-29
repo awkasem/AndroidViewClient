@@ -18,7 +18,7 @@ limitations under the License.
 @author: Diego Torres Milano
 '''
 
-__version__ = '8.18.1'
+__version__ = '8.25.0'
 
 import sys
 import warnings
@@ -258,12 +258,12 @@ class View:
 
         return cls(view.map, view.device, view.version, view.forceviewserveruse)
 
-    def __init__(self, map, device, version=-1, forceviewserveruse=False):
+    def __init__(self, _map, device, version=-1, forceviewserveruse=False):
         '''
         Constructor
 
-        @type map: map
-        @param map: the map containing the (attribute, value) pairs
+        @type _map: map
+        @param _map: the map containing the (attribute, value) pairs
         @type device: MonkeyDevice
         @param device: the device containing this View
         @type version: int
@@ -275,7 +275,7 @@ class View:
                         to use C{UiAutomator}.
         '''
 
-        self.map = map
+        self.map = _map
         ''' The map that contains the C{attr},C{value} pairs '''
         self.device = device
         ''' The MonkeyDevice '''
@@ -610,10 +610,10 @@ class View:
 
         if DEBUG_COORDS or debug:
             try:
-                id = self.getId()
+                _id = self.getId()
             except:
-                id = "NO_ID"
-            print >> sys.stderr, "getXY(%s %s ## %s)" % (self.getClass(), id, self.getUniqueId())
+                _id = "NO_ID"
+            print >> sys.stderr, "getXY(%s %s ## %s)" % (self.getClass(), _id, self.getUniqueId())
 
         x = self.getX()
         y = self.getY()
@@ -895,7 +895,7 @@ class View:
 
     def allPossibleNamesWithColon(self, name):
         l = []
-        for i in range(name.count("_")):
+        for _ in range(name.count("_")):
             name = name.replace("_", ":", 1)
             l.append(name)
         return l
@@ -948,7 +948,7 @@ class View:
                     var = 'id_' + var
         return var
 
-    def writeImageToFile(self, filename, format="PNG"):
+    def writeImageToFile(self, filename, _format="PNG"):
         '''
         Write the View image to the specified filename in the specified format.
 
@@ -956,17 +956,17 @@ class View:
         @param filename: Absolute path and optional filename receiving the image. If this points to
                          a directory, then the filename is determined by this View unique ID and
                          format extension.
-        @type format: str
-        @param format: Image format (default format is PNG)
+        @type _format: str
+        @param _format: Image format (default format is PNG)
         '''
 
         if not os.path.isabs(filename):
             raise ValueError("writeImageToFile expects an absolute path (fielname='%s')" % filename)
         if os.path.isdir(filename):
-            filename = os.path.join(filename, self.variableNameFromId() + '.' + format.lower())
+            filename = os.path.join(filename, self.variableNameFromId() + '.' + _format.lower())
         if DEBUG:
-            print >> sys.stderr, "writeImageToFile: saving image to '%s' in %s format" % (filename, format)
-        #self.device.takeSnapshot().getSubImage(self.getPositionAndSize()).writeToFile(filename, format)
+            print >> sys.stderr, "writeImageToFile: saving image to '%s' in %s format" % (filename, _format)
+        #self.device.takeSnapshot().getSubImage(self.getPositionAndSize()).writeToFile(filename, _format)
         # crop:
         # im.crop(box) ⇒ image
         # Returns a copy of a rectangular region from the current image.
@@ -975,7 +975,7 @@ class View:
         box = (l, t, r, b)
         if DEBUG:
             print >> sys.stderr, "writeImageToFile: cropping", box, "    reconnect=", self.device.reconnect
-        self.device.takeSnapshot(reconnect=self.device.reconnect).crop(box).save(filename, format)
+        self.device.takeSnapshot(reconnect=self.device.reconnect).crop(box).save(filename, _format)
 
     def __smallStr__(self):
         __str = unicode("View[", 'utf-8', 'replace')
@@ -1003,8 +1003,8 @@ class View:
         __str = unicode('', 'utf-8', 'replace')
         if "class" in self.map:
             __str += re.sub('.*\.', '', self.map['class'])
-        id = self.getId().replace('id/no_id/', '-')
-        __str += id
+        _id = self.getId().replace('id/no_id/', '-')
+        __str += _id
         ((L, T), (R, B)) = self.getCoords()
         __str += '@%04d%04d%04d%04d' % (L, T, R, B)
         __str += ''
@@ -1137,15 +1137,15 @@ class UiAutomator2AndroidViewClient():
 
     def Parse(self, uiautomatorxml):
         # Create an Expat parser
-        parser = xml.parsers.expat.ParserCreate()
+        parser = xml.parsers.expat.ParserCreate()  # @UndefinedVariable
         # Set the Expat event handlers to our methods
         parser.StartElementHandler = self.StartElement
         parser.EndElementHandler = self.EndElement
         parser.CharacterDataHandler = self.CharacterData
         # Parse the XML File
         try:
-            parserStatus = parser.Parse(uiautomatorxml.encode(encoding='utf-8', errors='replace'), True)
-        except xml.parsers.expat.ExpatError, ex:
+            _ = parser.Parse(uiautomatorxml.encode(encoding='utf-8', errors='replace'), True)
+        except xml.parsers.expat.ExpatError, ex:  # @UndefinedVariable
             print >>sys.stderr, "ERROR: Offending XML:\n", repr(uiautomatorxml)
             raise RuntimeError(ex)
         return self.root
@@ -1187,13 +1187,13 @@ class Excerpt2Code():
 
     def Parse(self, excerpt):
         # Create an Expat parser
-        parser = xml.parsers.expat.ParserCreate()
+        parser = xml.parsers.expat.ParserCreate()  # @UndefinedVariable
         # Set the Expat event handlers to our methods
         parser.StartElementHandler = self.StartElement
         parser.EndElementHandler = self.EndElement
         parser.CharacterDataHandler = self.CharacterData
         # Parse the XML
-        parserStatus = parser.Parse(excerpt, 1)
+        _ = parser.Parse(excerpt, 1)
         return self.data
 
 class ViewClient:
@@ -1871,7 +1871,7 @@ class ViewClient:
                     lastView = child
                     treeLevel = newLevel
                 else: # newLevel < treeLevel
-                    for i in range(treeLevel - newLevel):
+                    for _ in range(treeLevel - newLevel):
                         parents.pop()
                     parent = parents.pop()
                     parents.append(parent)
@@ -2449,12 +2449,12 @@ You should force ViewServer back-end.''')
 
     def writeImageToFile(self, filename, _format="PNG"):
         '''
-        Write the View image to the specified filename in the specified _format.
+        Write the View image to the specified filename in the specified format.
 
         @type filename: str
         @param filename: Absolute path and optional filename receiving the image. If this points to
                          a directory, then the filename is determined by the serialno of the device and
-                         _format extension.
+                         format extension.
         @type _format: str
         @param _format: Image format (default format is PNG)
         '''
@@ -2506,21 +2506,34 @@ You should force ViewServer back-end.''')
         ###########################################################################################
         return treeCopy
 
-    def distance(self, tree):
+    def distanceTo(self, tree):
         '''
-        Calculates the distance between this tree and the tree passed as argument.
+        Calculates the distance between the current state and the tree passed as argument.
 
         @type tree: list of Views
         @param tree: Tree of Views
         @return: the distance
         '''
+        return ViewClient.distance(ViewClient.__pickleable(self.views), tree)
+
+    @staticmethod
+    def distance(tree1, tree2):
+        '''
+        Calculates the distance between the two trees.
+
+        @type tree1: list of Views
+        @param tree1: Tree of Views
+        @type tree2: list of Views
+        @param tree2: Tree of Views
+        @return: the distance
+        '''
         ################################################################
         #FIXME: this should copy the entire tree and then transform it #
         ################################################################
-        pickleableViews = ViewClient.__pickleable(self.views)
-        pickleableTree = ViewClient.__pickleable(tree)
-        s1 = pickle.dumps(pickleableViews)
-        s2 = pickle.dumps(pickleableTree)
+        pickleableTree1 = ViewClient.__pickleable(tree1)
+        pickleableTree2 = ViewClient.__pickleable(tree2)
+        s1 = pickle.dumps(pickleableTree1)
+        s2 = pickle.dumps(pickleableTree2)
 
         if DEBUG_DISTANCE:
             print >>sys.stderr, "distance: calculating distance between", s1[:20], "and", s2[:20]
@@ -2538,6 +2551,7 @@ You should force ViewServer back-end.''')
                 print >>sys.stderr, "distance: trees have different length, using Levenshtein distance"
             return ViewClient.__levenshteinDistance(s1, s2)/t
 
+        
     @staticmethod
     def __hammingDistance(s1, s2):
         '''
@@ -2659,8 +2673,8 @@ You should force ViewServer back-end.''')
         return ViewClient.__levenshteinDistance(s1, s2)
 
     @staticmethod
-    def excerpt(str, execute=False):
-        code = Excerpt2Code().Parse(str)
+    def excerpt(_str, execute=False):
+        code = Excerpt2Code().Parse(_str)
         if execute:
             exec code
         else:
@@ -2700,12 +2714,13 @@ class CulebraOptions:
     SAVE_VIEW_SCREENSHOTS = 'save-view-screenshots'
     GUI = 'gui'
     SCALE = 'scale'
-    DO_NOT_VERIFY_INITIAL_SCREEN_DUMP = 'do-not-verify-initial-screen-dump'
+    DO_NOT_VERIFY_SCREEN_DUMP = 'do-not-verify-screen-dump'
     ORIENTATION_LOCKED = 'orientation-locked'
     SERIALNO = 'serialno'
     MULTI_DEVICE = 'multi-device'
+    LOG_ACTIONS = 'log-actions'
 
-    SHORT_OPTS = 'HVvIEFSkw:i:t:d:rCUM:j:D:K:R:a:o:Apf:W:GuP:Os:m'
+    SHORT_OPTS = 'HVvIEFSkw:i:t:d:rCUM:j:D:K:R:a:o:Apf:W:GuP:Os:mL'
     LONG_OPTS = [HELP, VERBOSE, VERSION, IGNORE_SECURE_DEVICE, IGNORE_VERSION_CHECK, FORCE_VIEW_SERVER_USE,
               DO_NOT_START_VIEW_SERVER,
               DO_NOT_IGNORE_UIAUTOMATOR_KILLED,
@@ -2717,11 +2732,12 @@ class CulebraOptions:
               OUTPUT + '=', INTERACTIVE, PREPEND_TO_SYS_PATH,
               SAVE_SCREENSHOT + '=', SAVE_VIEW_SCREENSHOTS + '=',
               GUI,
-              DO_NOT_VERIFY_INITIAL_SCREEN_DUMP,
+              DO_NOT_VERIFY_SCREEN_DUMP,
               SCALE + '=',
               ORIENTATION_LOCKED,
               SERIALNO + '=',
               MULTI_DEVICE,
+              LOG_ACTIONS,
               ]
     LONG_OPTS_ARG = {WINDOW: 'WINDOW',
               FIND_VIEWS_BY_ID: 'BOOL', FIND_VIEWS_WITH_TEXT: 'BOOL', FIND_VIEWS_WITH_CONTENT_DESCRIPTION: 'BOOL',
@@ -2757,17 +2773,41 @@ class CulebraOptions:
             'E': 'ignores ADB version check',
             'G': 'presents the GUI (EXPERIMENTAL)',
             'P': 'scale percentage (i.e. 0.5)',
-            'u': 'do not verify initial screen dump state',
+            'u': 'do not verify screen state after dump',
             'O': 'orientation locked in generated test',
             's': 'device serial number (can be more than 1)',
             'm': 'enables multi-device test generation',
+            'L': 'log actions using logcat',
             }
 
 class CulebraTestCase(unittest.TestCase):
+    '''
+    The base class for all CulebraTests.
+    
+    Class variables
+    ---------------
+    There are some class variables that can be used to change the behavior of the tests.
+    
+    B{serialno}: The serial number of the device. This can also be a list of devices for I{mutli-devices} 
+    tests or the keyword C{all} to run the tests on all available devices.
+    When a I{multi-device} test is running the available devices are available in a list named
+    L{self.devices} which has the corresponding values in a dictionary with C{'device'}, C{'vc'} and C{'serialno'}
+    keys respectively.
+    Also, in the case of I{multi-devices} tests and to be backward compatible with I{single-device} tests
+    the default device, the first one in the devices list, is assigned to L{self.device}, L{self.vc} and
+    L{self.serialno} too.
+    
+    B{verbose}: The verbosity of the tests. This can be changed from the test command line using the
+    command line option C{-v} or C{--verbose}.
+    '''
+    
     kwargs1 = None
     kwargs2 = None
     devices = None
     serialno = None
+    device = None
+    vc = None
+    verbose = False
     options = {}
 
     @classmethod
@@ -2775,6 +2815,10 @@ class CulebraTestCase(unittest.TestCase):
         cls.kwargs1 = {'ignoreversioncheck': False, 'verbose': False, 'ignoresecuredevice': False}
         cls.kwargs2 = {'startviewserver': True, 'forceviewserveruse': False, 'autodump': False, 'ignoreuiautomatorkilled': True}
 
+    def __init__(self, methodName='runTest'):
+        self.Log = CulebraTestCase.__Log(self)
+        unittest.TestCase.__init__(self, methodName=methodName)
+        
     def setUp(self):
         if self.serialno:
             if self.serialno.lower() == 'all':
@@ -2839,6 +2883,30 @@ class CulebraTestCase(unittest.TestCase):
     def allSerialnos(self, _filter=__passAll):
         return self.all('serialno', _filter)
 
+    def log(self, message, priority='D'):
+        '''
+        Logs a message with the specified priority.
+        '''
+        
+        self.device.log('CULEBRA', message, priority, CulebraTestCase.verbose)
+    
+    class __Log():
+        '''
+        Log class to simulate android.util.Log
+        '''
+
+        def __init__(self, culebraTestCase):
+            self.culebraTestCase = culebraTestCase
+            
+        def __getattr__(self, attr):
+            '''
+            Returns the corresponding log method or @C{AttributeError}.
+            '''
+            
+            if attr in ['v', 'd', 'i', 'w', 'e']:
+                return lambda message: self.culebraTestCase.log(message, priority=attr.upper())
+            raise AttributeError(self.__class__.__name__ + ' has no attribute "%s"' % attr)
+            
     @staticmethod
     def main():
         # If you want to specify tests classes and methods in the command line you will be forced
@@ -2851,9 +2919,25 @@ class CulebraTestCase(unittest.TestCase):
         old = '%(failfast)'
         new = '  %s s The serial number[s] to connect to or \'all\'\n%s' % (', '.join(ser), old)
         unittest.TestProgram.USAGE = unittest.TestProgram.USAGE.replace(old, new)
-        if len(sys.argv) >= 2 and sys.argv[1] in ser:
-            sys.argv.pop(1)
-            CulebraTestCase.serialno = sys.argv.pop(1)
+        argsToRemove = []
+        i = 0
+        while i < len(sys.argv):
+            a = sys.argv[i]
+            if a in ['-v', '--verbose']:
+                # make CulebraTestCase.verbose the same as unittest verbose
+                CulebraTestCase.verbose = True
+            elif a in ser:
+                # remove arguments not handled by unittest
+                if len(sys.argv) > (i+1):
+                    argsToRemove.append(sys.argv[i])
+                    CulebraTestCase.serialno = sys.argv[i+1]
+                    argsToRemove.append(CulebraTestCase.serialno)
+                    i += 1
+                else:
+                    raise RuntimeError('serial number missing')
+            i += 1
+        for a in argsToRemove:
+            sys.argv.remove(a)
         unittest.main()
 
 if __name__ == "__main__":
